@@ -26,7 +26,7 @@ class WeiboShare(object):
             assert type(self.weibo_homepage) == type(self.share_num)
             assert len(self.weibo_homepage) == len(self.share_num)
 
-        self.SCROLL_PAUSE_TIME = 3
+        self.SCROLL_PAUSE_TIME = 2
         self.driver = self._init_chrome()
         self.FILE_NAME = "znl_weibo"
 
@@ -97,6 +97,7 @@ class WeiboShare(object):
         self.driver.get(given_url)
         time.sleep(5)
 
+        # FIXME: click bug need to be fixed
         # show all weibo on this page
         button = self.driver.find_element_by_xpath('//a[contains(text(), "全部") and (@class="S_txt1 " or @class="S_txt1 S_line1")]')
         button.click()
@@ -171,7 +172,7 @@ class WeiboShare(object):
             for url in self.znl_list:
                 text_box.clear()
                 text_box.send_keys(url)
-                time.sleep(random.uniform(0, 1)) if self.fast else time.sleep(random.uniform(1, 2))
+                time.sleep(random.uniform(0, 0.5)) if self.fast else time.sleep(random.uniform(1, 2))
                 text_box.send_keys(Keys.ENTER)
                 index += 1
                 logging.info(f"{index} weibo sent successfully in {group_name} !!")
