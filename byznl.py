@@ -28,7 +28,7 @@ class WeiboShare(object):
 
         self.SCROLL_PAUSE_TIME = 2
         self.driver = self._init_chrome()
-        self.FILE_NAME = "znl_weibo"
+        self.FILE_NAME = "210607下午.txt"
 
         count = 0
         if os.path.exists(self.FILE_NAME):
@@ -95,7 +95,7 @@ class WeiboShare(object):
         self.driver.execute_script("window.open('');")
         self.driver.switch_to.window(self.driver.window_handles[1])
         self.driver.get(given_url)
-        time.sleep(5)
+        time.sleep(10)
 
         # FIXME: click bug need to be fixed
         # show all weibo on this page
@@ -160,6 +160,7 @@ class WeiboShare(object):
             index = 0
 
             # verify whether this group belongs to BUYUAN groups
+            # FIXME: weired sometimes the title doesn't show up, you can comment this part
             try:
                 verification = self.driver.find_element_by_xpath('//*[@title="房纸_的官方认证粉丝群"]')
             except:
@@ -172,7 +173,7 @@ class WeiboShare(object):
             for url in self.znl_list:
                 text_box.clear()
                 text_box.send_keys(url)
-                time.sleep(random.uniform(0, 0.5)) if self.fast else time.sleep(random.uniform(1, 2))
+                time.sleep(random.uniform(0, 0.8)) if self.fast else time.sleep(random.uniform(1, 2))
                 text_box.send_keys(Keys.ENTER)
                 index += 1
                 logging.info(f"{index} weibo sent successfully in {group_name} !!")
