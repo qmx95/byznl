@@ -7,6 +7,8 @@ from selenium.webdriver.chrome.options import Options
 import os
 import json
 import logging
+import sys
+import datetime
 
 logging.basicConfig(filename="share_weibo_log",
                     filemode='w',
@@ -21,18 +23,15 @@ class WeiboShare(object):
         self.group_num = config['group_num']
         self.files = config['file']
         self.fast = config['fast']
+        self.share_start_time = config['start_time']
         self.znl_list = []
 
-        if type(self.weibo_homepage) is list or type(self.share_num) is list:
-            assert type(self.weibo_homepage) == type(self.share_num)
-            assert len(self.weibo_homepage) == len(self.share_num)
+        self._config_check()
 
         self.SCROLL_PAUSE_TIME = 2
         self.driver = self._init_chrome()
         self.FILE_NAME = "znl_weibo"
 
-        if type(self.files) is str:
-            self.files = [self.files]
         for file_name in self.files:
             count = 0
             if os.path.exists(file_name):
@@ -42,6 +41,30 @@ class WeiboShare(object):
                         count += 1
             logging.info(f"read {count} urls from {file_name}")
 
+    def _config_check(self):
+        assert type(self.weibo_homepage) is list
+        assert type(self.share_num) is list
+        assert type(self.files) is list
+        assert type(self.share_start_time) is list
+
+        # check
+        if len(self.weibo_homepage) != 0:
+            if len(self.share_start_time) != 0 and len(self.share_num) != 0:
+                logging.error("请将znl_num或者start_time设置为空!")
+                quit()
+            if (len(self.weibo_homepage) != len(self.share_num)) and (
+                    len(self.weibo_homepage) != len(self.share_start_time)):
+                logging.error("weibo_home_page数目与znl_num/start_time数目不一致")
+                quit()
+
+        # set start_time/share_num
+        if len(self.weibo_homepage) != 0:
+            if len(self.share_start_time) == 0:
+                self.share_start_time = ["2021-06-01 00:00"] * len(self.weibo_homepage)
+            if len(self.share_num) == 0:
+                self.share_num = [sys.maxsize] * len(self.weibo_homepage)
+
+        self.share_start_time = [datetime.datetime.strptime(tmp_time, '%Y-%m-%d %H:%M') for tmp_time in self.share_start_time]
 
 
     def _init_chrome(self):
@@ -95,7 +118,7 @@ class WeiboShare(object):
                 break
             last_height = new_height
 
-    def get_znl_weibos(self, given_url, znl_num):
+    def get_znl_weibos(self, given_url, znl_num, start_time):
         # open a new tab
         self.driver.execute_script("window.open('');")
         self.driver.switch_to.window(self.driver.window_handles[1])
@@ -110,11 +133,10 @@ class WeiboShare(object):
         logging.info(f"-----------begin to scan weibo {given_url}-------------")
 
         url_link_list = []
-        page_num = 0
-        while znl_num > len(url_link_list):
+        page_num, full_flag = 0, False
+        while True:
             # scroll down
             self.scroll_down_page()
-
 
             # check if next page is available, network latency issue??
             # FIXME: 末页bug，之后再改
@@ -126,14 +148,22 @@ class WeiboShare(object):
             # get all weibos on this page
             weibos = self.driver.find_elements_by_xpath('//div[@class="WB_detail"]/div[@class="WB_from S_txt2"]/a')
             for weibo in weibos:
+                weibo_time = weibo.get_attribute("title").strip()
+                if weibo_time == "":
+                    continue
+                weibo_time = datetime.datetime.strptime(weibo_time, '%Y-%m-%d %H:%M')
+                if (start_time > weibo_time and len(url_link_list) != 0) or znl_num <= len(url_link_list):
+                    full_flag = True
+                    break
                 url_link = weibo.get_attribute("href")
                 if url_link.startswith('https://weibo.com') and url_link.endswith('weibotime'):
                     url_link_list.append(url_link)
 
             logging.info(f"get total {len(url_link_list)} weibos from {page_num+1} pages")
 
-            if znl_num <= len(url_link_list):
+            if full_flag:
                 break
+
 
             # go to next page
             next_page.click()
@@ -144,13 +174,13 @@ class WeiboShare(object):
         self.driver.switch_to.window(self.driver.window_handles[0])
         time.sleep(1)
 
-        logging.info(f"get {znl_num} weibos from {given_url}")
+        logging.info(f"get {len(url_link_list)} weibos from {given_url}")
         logging.info(f"-----------weibo {given_url} scan done-------------")
 
         with open(given_url[20:30], 'w') as f:
-            for url in url_link_list[:znl_num]:
+            for url in url_link_list:
                 f.write(url + '\n')
-        return [url for url in reversed(url_link_list[:znl_num])]
+        return [url for url in reversed(url_link_list)]
 
 
     def share_to_group(self):
@@ -202,11 +232,8 @@ class WeiboShare(object):
 
     def weibo_share(self):
         self.group_name_list = self.get_share_groups()
-        if type(self.weibo_homepage) is list:
-            for tmp_page, tmp_num in zip(self.weibo_homepage, self.share_num):
-                self.znl_list.extend(self.get_znl_weibos(tmp_page, tmp_num))
-        else:
-            self.znl_list.extend(self.get_znl_weibos(self.weibo_homepage, self.share_num))
+        for tmp_page, tmp_num, tmp_start_time in zip(self.weibo_homepage, self.share_num, self.share_start_time):
+            self.znl_list.extend(self.get_znl_weibos(tmp_page, tmp_num, tmp_start_time))
         logging.info(f'total znl num is {len(self.znl_list)}')
         self.share_to_group()
         if os.path.exists(self.FILE_NAME):
