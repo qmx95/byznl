@@ -19,6 +19,7 @@ class WeiboShare(object):
         self.weibo_homepage = config['weibo_home_page']
         self.share_num = config['znl_num']
         self.group_num = config['group_num']
+        self.files = config['file']
         self.fast = config['fast']
         self.znl_list = []
 
@@ -28,21 +29,25 @@ class WeiboShare(object):
 
         self.SCROLL_PAUSE_TIME = 2
         self.driver = self._init_chrome()
-        self.FILE_NAME = "210607下午.txt"
+        self.FILE_NAME = "znl_weibo"
 
-        count = 0
-        if os.path.exists(self.FILE_NAME):
-            with open(self.FILE_NAME, 'r') as f:
-                for line in f:
-                    self.znl_list.append(line.strip())
-                    count += 1
-        logging.info(f"read {count} urls from {self.FILE_NAME}")
+        if type(self.files) is str:
+            self.files = [self.files]
+        for file_name in self.files:
+            count = 0
+            if os.path.exists(file_name):
+                with open(file_name, encoding="utf8", errors='ignore') as f:
+                    for line in f:
+                        self.znl_list.append(line.strip())
+                        count += 1
+            logging.info(f"read {count} urls from {file_name}")
+
 
 
     def _init_chrome(self):
         # open chrome
         options = webdriver.ChromeOptions()
-        options.add_argument("user-data-dir=/Users/MengxiaoQian/Library/Application Support/Google/Chrome/Profile 5")  # Path to your chrome profile
+        options.add_argument("user-data-dir=/Users/MengxiaoQian/Library/Application Support/Google/Chrome/Profile 1")  # Path to your chrome profile
         driver = webdriver.Chrome(
             executable_path="/Users/MengxiaoQian/.wdm/drivers/chromedriver/mac64/91.0.4472.19/chromedriver", chrome_options=options)
         logging.info("open chrome successfully!!")
@@ -97,7 +102,6 @@ class WeiboShare(object):
         self.driver.get(given_url)
         time.sleep(10)
 
-        # FIXME: click bug need to be fixed
         # show all weibo on this page
         button = self.driver.find_element_by_xpath('//a[contains(text(), "全部") and (@class="S_txt1 " or @class="S_txt1 S_line1")]')
         button.click()
@@ -143,7 +147,9 @@ class WeiboShare(object):
         logging.info(f"get {znl_num} weibos from {given_url}")
         logging.info(f"-----------weibo {given_url} scan done-------------")
 
-
+        with open(given_url[20:30], 'w') as f:
+            for url in url_link_list[:znl_num]:
+                f.write(url + '\n')
         return [url for url in reversed(url_link_list[:znl_num])]
 
 
@@ -155,7 +161,7 @@ class WeiboShare(object):
                 '//span[contains(text(), "{0}") and @class="one-line usrn"]'.format(group_name))
             group = group.find_element_by_xpath('../../../..')
             group.click()
-            time.sleep(10)
+            time.sleep(15)
             logging.info(f"-------------begin to send weibo in group {group_name}--------------")
             index = 0
 
@@ -165,20 +171,18 @@ class WeiboShare(object):
                 verification = self.driver.find_element_by_xpath('//*[@title="房纸_的官方认证粉丝群"]')
             except:
                 logging.error(group_name + ' not for BOYUAN')
-                self.driver.close()
-                quit()
+                continue
 
             # share weibo to group
             text_box = self.driver.find_element_by_id('webchat-textarea')
             for url in self.znl_list:
                 text_box.clear()
                 text_box.send_keys(url)
-                time.sleep(random.uniform(0, 0.8)) if self.fast else time.sleep(random.uniform(1, 2))
+                time.sleep(random.uniform(0, 1)) if self.fast else time.sleep(random.uniform(1, 2))
                 text_box.send_keys(Keys.ENTER)
                 index += 1
                 logging.info(f"{index} weibo sent successfully in {group_name} !!")
 
-                # FIXME: busy逻辑我还没有测试，我的号一直没有busy
                 if index % 3 == 0:
                     notice_list = self.driver.find_elements_by_xpath('//span[@class="notice_in"]')
                     for notice in notice_list:
@@ -189,7 +193,7 @@ class WeiboShare(object):
                 if BUSY:
                     logging.error("------------此号已频繁，请注意休息-----------------")
                     with open(self.FILE_NAME, 'w') as f:
-                        for url in self.url_list[index:]:
+                        for url in self.znl_list[index:]:
                             f.write(url + '\n')
                     self.driver.close()
                     quit()

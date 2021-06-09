@@ -1,6 +1,7 @@
 {
-    "weibo_home_page": ["https://weibo.com/u/1897367473?ssl_rnd=1623110291.1364&is_all=1", "https://weibo.com/u/6125787948?profile_ftype=1&is_all=1#_0"],
-    "znl_num": [300, 250],
+    "weibo_home_page":[],
+    "znl_num": [],
+    "file": "6285393246",
     "group_num": 4,
-    "fast": true
+    "fast": false
 }
