@@ -200,11 +200,11 @@ class WeiboShare(object):
 
             # verify whether this group belongs to BUYUAN groups
             # FIXME: weired sometimes the title doesn't show up, you can comment this part
-            try:
-                verification = self.driver.find_element_by_xpath('//*[@title="房纸_的官方认证粉丝群"]')
-            except:
-                logging.error(group_name + ' not for BOYUAN')
-                continue
+            # try:
+            #     verification = self.driver.find_element_by_xpath('//*[@title="房纸_的官方认证粉丝群"]')
+            # except:
+            #     logging.error(group_name + ' not for BOYUAN')
+            #     continue
 
             # share weibo to group
             text_box = self.driver.find_element_by_id('webchat-textarea')
