@@ -9,6 +9,7 @@ import json
 import logging
 import sys
 import datetime
+import regex as re
 
 logging.basicConfig(filename="share_weibo_log",
                     filemode='w',
@@ -96,9 +97,11 @@ class WeiboShare(object):
         # get group name list including palou
         groups = self.driver.find_elements_by_xpath('//span[@class="one-line usrn"]')
         group_name_list = []
+        regex_pattern = "爬楼\d+群\s+\d\.\d+解散"
         for group in groups:
-            if "爬楼" in group.text:
+            if re.fullmatch(regex_pattern, group.text.strip()):
                 group_name_list.append(group.text)
+        logging.info(f'available groups {group_name_list}')
         return group_name_list
 
     def scroll_down_page(self):
@@ -248,6 +251,7 @@ class WeiboShare(object):
 
 
 if __name__ == '__main__':
+
 
     with open('config.json', 'r') as f:
         data = json.load(f)
