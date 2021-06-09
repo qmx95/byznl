@@ -1,7 +1,8 @@
 {
-    "weibo_home_page":[],
+    "weibo_home_page":["https://weibo.com/p/1005056169949387/home?profile_ftype=1&is_all=1#_0"],
     "znl_num": [],
-    "file": "6285393246",
+    "start_time": ["2021-06-08 11:00"],
+    "file": ["6285393246"],
     "group_num": 4,
     "fast": false
 }
