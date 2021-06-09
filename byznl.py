@@ -124,7 +124,7 @@ class WeiboShare(object):
                 continue
 
             # get all weibos on this page
-            weibos = self.driver.find_elements_by_xpath('//div[@class="WB_from S_txt2"]/a')
+            weibos = self.driver.find_elements_by_xpath('//div[@class="WB_detail"]/div[@class="WB_from S_txt2"]/a')
             for weibo in weibos:
                 url_link = weibo.get_attribute("href")
                 if url_link.startswith('https://weibo.com') and url_link.endswith('weibotime'):
