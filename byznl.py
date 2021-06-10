@@ -71,7 +71,7 @@ class WeiboShare(object):
     def _init_chrome(self):
         # open chrome
         options = webdriver.ChromeOptions()
-        options.add_argument("user-data-dir=/Users/MengxiaoQian/Library/Application Support/Google/Chrome/Profile 1")  # Path to your chrome profile
+        options.add_argument("user-data-dir=/Users/MengxiaoQian/Library/Application Support/Google/Chrome/Profile 11")  # Path to your chrome profile
         driver = webdriver.Chrome(
             executable_path="/Users/MengxiaoQian/.wdm/drivers/chromedriver/mac64/91.0.4472.19/chromedriver", chrome_options=options)
         logging.info("open chrome successfully!!")
@@ -82,6 +82,7 @@ class WeiboShare(object):
         time.sleep(5)
 
         # log in
+        # FIXME: 这个login的逻辑有问题，我遇到有的微博登录后不是以https://weibo.com/u/开头的，替换成你的逻辑
         while True:
             time.sleep(5)
             logging.info('please log in!!')
