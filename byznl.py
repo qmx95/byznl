@@ -1,21 +1,28 @@
-from selenium import webdriver
-import time
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.keys import Keys
-import random
-from selenium.webdriver.chrome.options import Options
-import os
+import datetime
 import json
 import logging
+import os
+import platform
+import random
 import sys
-import datetime
+import time
+import pickle
+
 import regex as re
+import selenium.webdriver as webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 logging.basicConfig(filename="share_weibo_log",
                     filemode='w',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.INFO)
+
 
 class WeiboShare(object):
     def __init__(self, config: dict):
@@ -26,11 +33,12 @@ class WeiboShare(object):
         self.fast = config['fast']
         self.share_start_time = config['start_time']
         self.znl_list = []
+        self.group_name_list = []
 
         self._config_check()
 
         self.SCROLL_PAUSE_TIME = 2
-        self.driver = self._init_chrome()
+        self.driver = WeiboShare._init_chrome()
         self.FILE_NAME = "znl_weibo"
 
         for file_name in self.files:
@@ -51,11 +59,11 @@ class WeiboShare(object):
         # check
         if len(self.weibo_homepage) != 0:
             if len(self.share_start_time) != 0 and len(self.share_num) != 0:
-                logging.error("请将znl_num或者start_time设置为空!")
+                logging.error("Please only fill in one of [znl_num] or [start_time]")
                 quit()
             if (len(self.weibo_homepage) != len(self.share_num)) and (
                     len(self.weibo_homepage) != len(self.share_start_time)):
-                logging.error("weibo_home_page数目与znl_num/start_time数目不一致")
+                logging.error("The number of [weibo_home_page] is different with the number of [znl_num]/[start_time]")
                 quit()
 
         # set start_time/share_num
@@ -65,29 +73,68 @@ class WeiboShare(object):
             if len(self.share_num) == 0:
                 self.share_num = [sys.maxsize] * len(self.weibo_homepage)
 
-        self.share_start_time = [datetime.datetime.strptime(tmp_time, '%Y-%m-%d %H:%M') for tmp_time in self.share_start_time]
+        self.share_start_time = [datetime.datetime.strptime(tmp_time, '%Y-%m-%d %H:%M') for tmp_time in
+                                 self.share_start_time]
 
+    def wait_element_to_present(self, delay, element):
+        try:
+            WebDriverWait(self.driver, delay).until(
+                EC.presence_of_element_located(element))
+        except TimeoutException:
+            logging.exception('Failed to wait element within ' + str(delay) + 's')
+            self.driver.save_screenshot(str(time.time()) + '.png')
+            self.driver.close()
+            sys.exit(1)
 
-    def _init_chrome(self):
-        # open chrome
-        options = webdriver.ChromeOptions()
-        options.add_argument("user-data-dir=/Users/MengxiaoQian/Library/Application Support/Google/Chrome/Profile 11")  # Path to your chrome profile
-        driver = webdriver.Chrome(
-            executable_path="/Users/MengxiaoQian/.wdm/drivers/chromedriver/mac64/91.0.4472.19/chromedriver", chrome_options=options)
-        logging.info("open chrome successfully!!")
-        return driver
+    @staticmethod
+    def resource_path(relative_path: str) -> str:
+        try:
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.dirname(__file__)
+
+        return os.path.join(base_path, relative_path)
+
+    @staticmethod
+    def _init_chrome():
+        options = Options()
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-infobars')
+        options.add_argument('--disable-extensions')
+        # change windows size if too large
+        options.add_argument('--window-size=1280,720')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--allow-running-insecure-content')
+        # to disable dumbass notification
+        options.add_experimental_option('prefs',
+                                        {'profile.default_content_setting_values.notifications': 2
+                                         })
+
+        if platform.system() == 'Windows':
+            logging.info('Running on Windows')
+            return webdriver.Chrome(WeiboShare.resource_path('chromedriver.exe'), chrome_options=options)
+
+        logging.info('Running on Mac / *nix')
+        return webdriver.Chrome(WeiboShare.resource_path('chromedriver'), chrome_options=options)
 
     def get_share_groups(self):
         self.driver.get('http://weibo.com')
-        time.sleep(5)
+
+        # must add cookies after access the website, or else encounter invalid doamin execption
+        try:
+            # add cookies
+            cookies = pickle.load(open('cookies.pkl', 'rb'))
+            for cookie in cookies:
+                self.driver.add_cookie(cookie)
+        except FileNotFoundError:
+            logging.error('No cookie found, need to re-login')
+
+        self.driver.get('https://weibo.com/')  # access Weibo
 
         # log in
-        # FIXME: 这个login的逻辑有问题，我遇到有的微博登录后不是以https://weibo.com/u/开头的，替换成你的逻辑
-        while True:
-            time.sleep(5)
-            logging.info('please log in!!')
-            if self.driver.current_url.startswith('https://weibo.com/u/'):
-                break
+        # Rely on UI change intead of URL, seem not mandatory to wait forever as well
+        self.wait_element_to_present(300, (By.ID, 'v6_pl_rightmod_myinfo'))
         logging.info('log in successfully!')
 
         # go to chat page
@@ -130,7 +177,8 @@ class WeiboShare(object):
         time.sleep(10)
 
         # show all weibo on this page
-        button = self.driver.find_element_by_xpath('//a[contains(text(), "全部") and (@class="S_txt1 " or @class="S_txt1 S_line1")]')
+        button = self.driver.find_element_by_xpath(
+            '//a[contains(text(), "全部") and (@class="S_txt1 " or @class="S_txt1 S_line1")]')
         button.click()
         time.sleep(3)
 
@@ -163,11 +211,10 @@ class WeiboShare(object):
                 if url_link.startswith('https://weibo.com') and url_link.endswith('weibotime'):
                     url_link_list.append(url_link)
 
-            logging.info(f"get total {len(url_link_list)} weibos from {page_num+1} pages")
+            logging.info(f"get total {len(url_link_list)} weibos from {page_num + 1} pages")
 
             if full_flag:
                 break
-
 
             # go to next page
             next_page.click()
@@ -186,9 +233,8 @@ class WeiboShare(object):
                 f.write(url + '\n')
         return [url for url in reversed(url_link_list)]
 
-
     def share_to_group(self):
-        BUSY = False
+        busy = False
         for group_name in self.group_name_list[:self.group_num]:
             # based on group name get corresponding group list element
             group = self.driver.find_element_by_xpath(
@@ -221,11 +267,11 @@ class WeiboShare(object):
                     notice_list = self.driver.find_elements_by_xpath('//span[@class="notice_in"]')
                     for notice in notice_list:
                         if '链接消息太频繁了' in notice.text:
-                            BUSY = True
+                            busy = True
                             break
 
-                if BUSY:
-                    logging.error("------------此号已频繁，请注意休息-----------------")
+                if busy:
+                    logging.error("------------The limit of messages has been reached, please try again later-----------------")
                     with open(self.FILE_NAME, 'w') as f:
                         for url in self.znl_list[index:]:
                             f.write(url + '\n')
@@ -242,18 +288,12 @@ class WeiboShare(object):
         self.share_to_group()
         if os.path.exists(self.FILE_NAME):
             os.remove(self.FILE_NAME)
+
+        pickle.dump(self.driver.get_cookies(), open('cookies.pkl', 'wb'))  # save cookies
         self.driver.close()
 
 
-
-
-
-
-
-
 if __name__ == '__main__':
-
-
     with open('config.json', 'r') as f:
         data = json.load(f)
 
