@@ -145,7 +145,7 @@ class WeiboShare(object):
         # get group name list including palou
         groups = self.driver.find_elements_by_xpath('//span[@class="one-line usrn"]')
         group_name_list = []
-        regex_pattern = "爬楼\d+群\s+\d\.\d+解散"
+        regex_pattern = "伯远爬楼\d+群\s+\d\.\d+解散"
         for group in groups:
             if re.fullmatch(regex_pattern, group.text.strip()):
                 group_name_list.append(group.text)
@@ -281,21 +281,33 @@ class WeiboShare(object):
             logging.info(f"-------------{group_name} sent {index} weibos done-------------")
 
     def weibo_share(self):
-        self.group_name_list = self.get_share_groups()
-        for tmp_page, tmp_num, tmp_start_time in zip(self.weibo_homepage, self.share_num, self.share_start_time):
-            self.znl_list.extend(self.get_znl_weibos(tmp_page, tmp_num, tmp_start_time))
-        logging.info(f'total znl num is {len(self.znl_list)}')
-        self.share_to_group()
-        if os.path.exists(self.FILE_NAME):
-            os.remove(self.FILE_NAME)
+        try:
+            self.group_name_list = self.get_share_groups()
+            for tmp_page, tmp_num, tmp_start_time in zip(self.weibo_homepage, self.share_num, self.share_start_time):
+                self.znl_list.extend(self.get_znl_weibos(tmp_page, tmp_num, tmp_start_time))
+            logging.info(f'total znl num is {len(self.znl_list)}')
+            self.share_to_group()
+            if os.path.exists(self.FILE_NAME):
+                os.remove(self.FILE_NAME)
 
-        pickle.dump(self.driver.get_cookies(), open('cookies.pkl', 'wb'))  # save cookies
-        self.driver.close()
+            pickle.dump(self.driver.get_cookies(), open('cookies.pkl', 'wb'))  # save cookies
+            self.driver.close()
+        except:
+            self.driver.save_screenshot(str(time.time()) + '.png')
+            self.driver.close()
+            logging.error(str(e))
+            quit()
 
 
 if __name__ == '__main__':
-    with open('config.json', 'r') as f:
-        data = json.load(f)
+    try:
+        with open('config.json', 'r') as f:
+            data = json.load(f)
 
-    weibo_share = WeiboShare(data)
-    weibo_share.weibo_share()
+        weibo_share = WeiboShare(data)
+        weibo_share.weibo_share()
+    except Exception as e:
+        logging.error(str(e))
+        quit()
+
+
