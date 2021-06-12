@@ -296,7 +296,7 @@ class WeiboShare(object):
             self.driver.save_screenshot(str(time.time()) + '.png')
             self.driver.close()
             logging.error(str(e))
-            quit()
+            sys.exit()
 
 
 if __name__ == '__main__':
@@ -308,6 +308,6 @@ if __name__ == '__main__':
         weibo_share.weibo_share()
     except Exception as e:
         logging.error(str(e))
-        quit()
+        sys.exit()
 
 
