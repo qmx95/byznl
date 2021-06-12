@@ -292,7 +292,7 @@ class WeiboShare(object):
 
             pickle.dump(self.driver.get_cookies(), open('cookies.pkl', 'wb'))  # save cookies
             self.driver.close()
-        except:
+        except Exception as e:
             self.driver.save_screenshot(str(time.time()) + '.png')
             self.driver.close()
             logging.error(str(e))
