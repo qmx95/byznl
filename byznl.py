@@ -228,9 +228,7 @@ class WeiboShare(object):
         logging.info(f"get {len(url_link_list)} weibos from {given_url}")
         logging.info(f"-----------weibo {given_url} scan done-------------")
 
-        regex_pattern = "\d+"
-        tmp_file_name = re.findall(regex_pattern, given_url)[0]
-        with open(tmp_file_name, 'w') as f:
+        with open(given_url[20:30], 'w') as f:
             for url in url_link_list:
                 f.write(url + '\n')
         return [url for url in reversed(url_link_list)]
