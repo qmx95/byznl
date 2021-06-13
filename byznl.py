@@ -228,7 +228,9 @@ class WeiboShare(object):
         logging.info(f"get {len(url_link_list)} weibos from {given_url}")
         logging.info(f"-----------weibo {given_url} scan done-------------")
 
-        with open(given_url[20:30], 'w') as f:
+        regex_pattern = "\d+"
+        tmp_file_name = re.findall(regex_pattern, given_url)[0]
+        with open(tmp_file_name, 'w') as f:
             for url in url_link_list:
                 f.write(url + '\n')
         return [url for url in reversed(url_link_list)]
@@ -301,7 +303,7 @@ class WeiboShare(object):
 
 if __name__ == '__main__':
     try:
-        with open('config.json', 'r') as f:
+        with open('config.json', 'r', encoding='utf8') as f:
             data = json.load(f)
 
         weibo_share = WeiboShare(data)
@@ -309,5 +311,3 @@ if __name__ == '__main__':
     except Exception as e:
         logging.error(str(e))
         sys.exit()
-
-
