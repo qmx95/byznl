@@ -145,9 +145,9 @@ class WeiboShare(object):
         # get group name list including palou
         groups = self.driver.find_elements_by_xpath('//span[@class="one-line usrn"]')
         group_name_list = []
-        regex_pattern = "伯远爬楼\d+群\s+\d\.\d+解散"
+        regex_pattern = "伯远爬楼\d+群"
         for group in groups:
-            if re.fullmatch(regex_pattern, group.text.strip()):
+            if re.match(regex_pattern, group.text.strip()):
                 group_name_list.append(group.text)
         logging.info(f'available groups {group_name_list}')
         return group_name_list
